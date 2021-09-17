@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "windowgenerator_with_sample_weight"
+version = "0.1.0"
+description = ""
+authors = ["None"]
+
+[tool.poetry.dependencies]
+python = "^3.8,<3.11"
+tensorflow = "^2.6.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+flake8 = "^3.9.2"
+mypy = "^0.910"
+isort = "^5.9.3"
+black = "21.7b0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

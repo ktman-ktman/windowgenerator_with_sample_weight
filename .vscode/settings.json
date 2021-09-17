@@ -1,0 +1,19 @@
+{
+    // Editor
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true
+    },
+    // Python
+    "python.languageServer": "Pylance",
+    "python.linting.enabled": true,
+    "python.linting.lintOnSave": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": [
+        "--max-line-length 88",
+        "--ignore=E202,W503,W504"
+    ],
+    "python.linting.mypyEnabled": true,
+    "python.formatting.provider": "black"
+}
