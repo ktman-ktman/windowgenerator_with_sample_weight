@@ -7,6 +7,8 @@ authors = ["None"]
 [tool.poetry.dependencies]
 python = "^3.8,<3.11"
 tensorflow = "^2.6.0"
+tensorflow-determinism = "^0.3.0"
+pandas = "^1.3.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
