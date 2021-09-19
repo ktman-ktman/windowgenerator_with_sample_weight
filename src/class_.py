@@ -18,7 +18,8 @@ class WindowGenerator:
         training_df: pd.DataFrame,
         validation_df: pd.DataFrame,
         test_df: pd.DataFrame,
-        label_columns: str = None,
+        label_columns: list = None,
+        sample_weight_label_columns: list = None,
     ):
         # Store the raw data.
         self.training_df = training_df
@@ -33,6 +34,15 @@ class WindowGenerator:
             }
         self.column_indices = {name: i for i, name in enumerate(training_df.columns)}
 
+        self.sample_weight_label_columns = sample_weight_label_columns
+        if sample_weight_label_columns is not None:
+            self.sample_weight_label_columns_indices = {
+                name: i for i, name in enumerate(sample_weight_label_columns)
+            }
+        self.sample_weight_column_indices = {
+            name: i for i, name in enumerate(training_df.columns)
+        }
+
         # Work out the window parameters.
         self.input_width = input_width
         self.label_width = label_width
@@ -46,6 +56,12 @@ class WindowGenerator:
         self.label_start = self.total_window_size - self.label_width
         self.labels_slice = slice(self.label_start, None)
         self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
+
+        self.sample_weight_label_start = self.total_window_size - self.label_width
+        self.sample_weight_labels_slice = slice(self.sample_weight_label_start, None)
+        self.sample_weight_label_indices = np.arange(self.total_window_size)[
+            self.labels_slice
+        ]
 
     def __repr__(self):
         return "\n".join(
@@ -69,12 +85,23 @@ class WindowGenerator:
                 axis=-1,
             )
 
+        sample_weights = features[:, self.sample_weight_labels_slice, :]
+        if self.sample_weight_label_columns is not None:
+            sample_weights = tf.stack(
+                [
+                    sample_weights[:, :, self.column_indices[name]]
+                    for name in self.sample_weight_label_columns
+                ],
+                axis=-1,
+            )
+
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
         inputs.set_shape([None, self.input_width, None])
         labels.set_shape([None, self.label_width, None])
+        sample_weights.set_shape([None, self.label_width, None])
 
-        return inputs, labels
+        return inputs, labels, sample_weights
 
     def make_dataset(self, data: np.ndarray) -> tf.data.Dataset:
         data = np.array(data, dtype=np.float32)

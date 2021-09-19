@@ -59,14 +59,43 @@ def make_sample_data(target_size: int = 1, feature_size: int = 2) -> pd.DataFram
     return df
 
 
+def make_sample_weight(sample_df: pd.DataFrame) -> pd.DataFrame:
+    if all(sample_df.index != sample_df.index.sort_values()):
+        raise Exception("Data error!")
+
+    diff_days = (sample_df.index - sample_df.index[-1]).days
+
+    decay_weight_df = pd.DataFrame(
+        diff_days,
+        index=sample_df.index,
+        columns=["diff_days"],
+    )
+
+    half_life_days = 365 * 10
+    decay_weight_df = decay_weight_df.assign(
+        decay_weight=decay_weight_df["diff_days"].div(half_life_days).abs().rpow(0.5)
+    )
+
+    del decay_weight_df["diff_days"]
+    return decay_weight_df
+
+
 def main():
     sample_df = make_sample_data()
 
+    # make sample weight
+    sample_weight_df = make_sample_weight(sample_df)
+    sample_df = pd.merge(
+        sample_df,
+        sample_weight_df,
+        how="left",
+        left_index=True,
+        right_index=True,
+    )
     training_df = sample_df.iloc[:-53]
     validation_df = sample_df.iloc[-53:-1]
     test_df = sample_df.iloc[-1:]
 
-    label_coln_l = [x for x in sample_df.columns if x.startswith("F")]
     generator = WindowGenerator(
         input_width=4,
         label_width=1,
@@ -75,12 +104,15 @@ def main():
         validation_df=validation_df,
         test_df=test_df,
         label_columns=["TARGET"],
+        # exclude_target=True,
+        sample_weight_label_columns=["decay_weight"],
     )
 
     training_ds = generator.training
-    labels, inputs = next(iter(training_ds.take(1)))
+    labels, inputs, sample_weights = next(iter(training_ds.take(1)))
     print(labels)
     print(inputs)
+    print(sample_weights)
 
 
 if __name__ == "__main__":
