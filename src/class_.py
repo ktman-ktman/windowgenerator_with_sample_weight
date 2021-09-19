@@ -18,30 +18,34 @@ class WindowGenerator:
         training_df: pd.DataFrame,
         validation_df: pd.DataFrame,
         test_df: pd.DataFrame,
-        label_columns: list = None,
-        sample_weight_label_columns: list = None,
+        X_column_l: list,
+        Y_column_l: list,
+        sample_weight_label_column: str,
     ):
+        """[summary]
+
+        Args:
+            input_width (int): 特徴量の時系列方向の長さ
+            label_width (int): ターゲットの時系列方向の長さ
+            shift (int): 何時点先のターゲットを予測するかのシフト量
+            training_df (pd.DataFrame): [description]
+            validation_df (pd.DataFrame): [description]
+            test_df (pd.DataFrame): [description]
+            X_column_l (list): 特徴量のカラム名のリスト.
+            Y_column_l (list): ターゲットのカラム名のリスト.
+            sample_weight_label_column (str): サンプルウェイトのカラム名.
+        """
         # Store the raw data.
         self.training_df = training_df
         self.validation_df = validation_df
         self.test_df = test_df
 
-        # Work out the label column indices.
-        self.label_columns = label_columns
-        if label_columns is not None:
-            self.label_columns_indices = {
-                name: i for i, name in enumerate(label_columns)
-            }
-        self.column_indices = {name: i for i, name in enumerate(training_df.columns)}
+        self.X_column_l = X_column_l
+        self.Y_column_l = Y_column_l
+        self.sample_weight_label_column = sample_weight_label_column
 
-        self.sample_weight_label_columns = sample_weight_label_columns
-        if sample_weight_label_columns is not None:
-            self.sample_weight_label_columns_indices = {
-                name: i for i, name in enumerate(sample_weight_label_columns)
-            }
-        self.sample_weight_column_indices = {
-            name: i for i, name in enumerate(training_df.columns)
-        }
+        # Work out the label column indices.
+        self.column_indices = {name: i for i, name in enumerate(training_df.columns)}
 
         # Work out the window parameters.
         self.input_width = input_width
@@ -57,43 +61,48 @@ class WindowGenerator:
         self.labels_slice = slice(self.label_start, None)
         self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
 
-        self.sample_weight_label_start = self.total_window_size - self.label_width
-        self.sample_weight_labels_slice = slice(self.sample_weight_label_start, None)
-        self.sample_weight_label_indices = np.arange(self.total_window_size)[
-            self.labels_slice
-        ]
-
     def __repr__(self):
         return "\n".join(
             [
                 f"Total window size: {self.total_window_size}",
                 f"Input indices: {self.input_indices}",
                 f"Label indices: {self.label_indices}",
-                f"Label column name(s): {self.label_columns}",
+                f"Label X column name(s): {self.X_column_l}",
+                f"Label Y column name(s): {self.Y_column_l}",
+                f"Label sample weight column name: {self.sample_weight_label_column}",
             ]
         )
 
     def split_window(self, features: np.ndarray) -> tuple:
-        inputs = features[:, self.input_slice, :]
-        labels = features[:, self.labels_slice, :]
-        if self.label_columns is not None:
-            labels = tf.stack(
-                [
-                    labels[:, :, self.column_indices[name]]
-                    for name in self.label_columns
-                ],
-                axis=-1,
-            )
+        """全データをX，Y，sample_weightに分割する
 
-        sample_weights = features[:, self.sample_weight_labels_slice, :]
-        if self.sample_weight_label_columns is not None:
-            sample_weights = tf.stack(
-                [
-                    sample_weights[:, :, self.column_indices[name]]
-                    for name in self.sample_weight_label_columns
-                ],
-                axis=-1,
-            )
+        Args:
+            features (np.ndarray): [description]
+
+        Returns:
+            tuple: (X, Y, sample_weight)のtuple
+        """
+        inputs = features[:, self.input_slice, :]
+        inputs = tf.stack(
+            [inputs[:, :, self.column_indices[name]] for name in self.X_column_l],
+            axis=-1,
+        )
+        labels = features[:, self.labels_slice, :]
+        labels = tf.stack(
+            [labels[:, :, self.column_indices[name]] for name in self.Y_column_l],
+            axis=-1,
+        )
+
+        # sample_weights = features[:, self.sample_weight_labels_slice, :]
+        sample_weights = features[:, self.labels_slice, :]
+        sample_weights = tf.stack(
+            [
+                sample_weights[
+                    :, :, self.column_indices[self.sample_weight_label_column]
+                ]
+            ],
+            axis=-1,
+        )
 
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.

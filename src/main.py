@@ -103,9 +103,10 @@ def main():
         training_df=training_df,
         validation_df=validation_df,
         test_df=test_df,
-        label_columns=["TARGET"],
+        X_column_l=[x for x in sample_df.columns if x.startswith("F")],
+        Y_column_l=["TARGET"],
         # exclude_target=True,
-        sample_weight_label_columns=["decay_weight"],
+        sample_weight_label_column="decay_weight",
     )
 
     training_ds = generator.training
