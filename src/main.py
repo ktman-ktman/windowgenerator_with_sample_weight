@@ -7,9 +7,10 @@ import numpy as np
 import pandas as pd
 
 from class_ import WindowGenerator
+from model import get_model
 
 
-def make_sample_data(target_size: int = 1, feature_size: int = 2) -> pd.DataFrame:
+def make_sample_data(target_size: int = 1, feature_size: int = 10) -> pd.DataFrame:
     """サンプルデータを作成
     1990/1/1より後の最も古い金曜日から
     2020/12/31より前の最も新しい金曜日までで
@@ -53,7 +54,7 @@ def make_sample_data(target_size: int = 1, feature_size: int = 2) -> pd.DataFram
     )
 
     # わかりやすいように
-    df.loc[:, "TARGET"] = [i for i in range(df.shape[0])]
+    df.loc[:, "TARGET"] = [1 if x > 0.5 else 0 for x in df["TARGET"]]
     df.loc[:, "F1"] = [i for i in range(df.shape[0])]
 
     return df
@@ -105,15 +106,30 @@ def main():
         test_df=test_df,
         X_column_l=[x for x in sample_df.columns if x.startswith("F")],
         Y_column_l=["TARGET"],
-        # exclude_target=True,
         sample_weight_label_column="decay_weight",
     )
 
+    print(generator)
     training_ds = generator.training
-    labels, inputs, sample_weights = next(iter(training_ds.take(1)))
+    inputs, labels, sample_weights = next(iter(training_ds))
+    # inputs, labels = next(iter(training_ds))
     print(labels)
     print(inputs)
     print(sample_weights)
+
+    input_shape = inputs.shape[1:]
+    model = get_model(1, input_shape=input_shape)
+    print(model.summary())
+    print(inputs)
+    print(model(inputs))
+    model.compile(
+        loss="binary_crossentropy",
+        optimizer="adam",
+    )
+    history = model.fit(
+        generator.training, validation_data=generator.validation, epochs=5
+    )
+    # history = model.fit(generator.training, epochs=5)
 
 
 if __name__ == "__main__":

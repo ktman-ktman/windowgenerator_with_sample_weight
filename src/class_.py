@@ -111,6 +111,7 @@ class WindowGenerator:
         sample_weights.set_shape([None, self.label_width, None])
 
         return inputs, labels, sample_weights
+        #return inputs, labels
 
     def make_dataset(self, data: np.ndarray) -> tf.data.Dataset:
         data = np.array(data, dtype=np.float32)
