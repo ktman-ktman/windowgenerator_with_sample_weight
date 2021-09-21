@@ -7,6 +7,7 @@ import os
 import click
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 from class_ import WindowGenerator
 from model import get_model
@@ -120,9 +121,16 @@ def main(input_width: int, batch_size: int):
         right_index=True,
     )
 
+    # normalize
     X_column_l = [x for x in sample_df.columns if x.startswith("F")]
     Y_column_l = ["TARGET"]
     sample_weight_label_column = "decay_weight"
+
+    scaler = StandardScaler()
+    training_df.loc[:, X_column_l] = scaler.fit_transform(training_df[X_column_l])
+    validation_df.loc[:, X_column_l] = scaler.transform(validation_df[X_column_l])
+    test_df.loc[:, X_column_l] = scaler.transform(test_df[X_column_l])
+
     generator = WindowGenerator(
         input_width=input_width,
         label_width=1,
