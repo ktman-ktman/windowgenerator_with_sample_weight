@@ -2,12 +2,16 @@
 #! -*- coding: utf-8 -*-
 
 import datetime
+import os
 
+import click
 import numpy as np
 import pandas as pd
 
 from class_ import WindowGenerator
 from model import get_model
+
+os.environ["TF_DETERMINISTIC_OPS"] = "1"
 
 
 def make_sample_data(target_size: int = 1, feature_size: int = 10) -> pd.DataFrame:
@@ -81,55 +85,70 @@ def make_sample_weight(sample_df: pd.DataFrame) -> pd.DataFrame:
     return decay_weight_df
 
 
-def main():
+@click.command()
+@click.argument("input_width", type=int)
+@click.argument("batch_size", type=int)
+def main(input_width: int, batch_size: int):
     sample_df = make_sample_data()
+    training_df = sample_df.iloc[:-53]
+    validation_df = sample_df.iloc[-53 : (-1 - input_width + 1)]
+    test_df = sample_df.iloc[(-1 - input_width + 1) :]
 
-    # make sample weight
-    sample_weight_df = make_sample_weight(sample_df)
-    sample_df = pd.merge(
-        sample_df,
+    # merge with sample weight
+    sample_weight_df = make_sample_weight(training_df)
+    training_df = pd.merge(
+        training_df,
         sample_weight_df,
         how="left",
         left_index=True,
         right_index=True,
     )
-    training_df = sample_df.iloc[:-53]
-    validation_df = sample_df.iloc[-53:-1]
-    test_df = sample_df.iloc[-1:]
-
-    generator = WindowGenerator(
-        input_width=4,
-        label_width=1,
-        shift=1,
-        training_df=training_df,
-        validation_df=validation_df,
-        test_df=test_df,
-        X_column_l=[x for x in sample_df.columns if x.startswith("F")],
-        Y_column_l=["TARGET"],
-        sample_weight_label_column="decay_weight",
+    sample_weight_df = make_sample_weight(validation_df)
+    validation_df = pd.merge(
+        validation_df,
+        sample_weight_df,
+        how="left",
+        left_index=True,
+        right_index=True,
+    )
+    sample_weight_df = make_sample_weight(test_df)
+    test_df = pd.merge(
+        test_df,
+        sample_weight_df,
+        how="left",
+        left_index=True,
+        right_index=True,
     )
 
-    print(generator)
-    training_ds = generator.training
-    inputs, labels, sample_weights = next(iter(training_ds))
-    # inputs, labels = next(iter(training_ds))
-    print(labels)
-    print(inputs)
-    print(sample_weights)
+    X_column_l = [x for x in sample_df.columns if x.startswith("F")]
+    Y_column_l = ["TARGET"]
+    sample_weight_label_column = "decay_weight"
+    generator = WindowGenerator(
+        input_width=input_width,
+        label_width=1,
+        shift=1,
+        X_column_l=X_column_l,
+        Y_column_l=Y_column_l,
+        sample_weight_label_column=sample_weight_label_column,
+    )
 
-    input_shape = inputs.shape[1:]
+    training_ds = generator.make_dataset(
+        training_df, batch_size=batch_size, shuffle=True
+    )
+    validation_ds = generator.make_dataset(
+        validation_df, batch_size=batch_size, shuffle=False
+    )
+    test_input = test_df[X_column_l].values[-input_width:][np.newaxis, :, :]
+
+    input_shape = (input_width, len(X_column_l))
     model = get_model(1, input_shape=input_shape)
     print(model.summary())
-    print(inputs)
-    print(model(inputs))
     model.compile(
         loss="binary_crossentropy",
         optimizer="adam",
     )
-    history = model.fit(
-        generator.training, validation_data=generator.validation, epochs=5
-    )
-    # history = model.fit(generator.training, epochs=5)
+    history = model.fit(training_ds, validation_data=validation_ds, epochs=1)
+    print(model.predict(test_input))
 
 
 if __name__ == "__main__":

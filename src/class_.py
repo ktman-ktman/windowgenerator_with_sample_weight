@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import os
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-
-os.environ["TF_DETERMINISTIC_OPS"] = "1"
 
 
 class WindowGenerator:
@@ -15,9 +12,6 @@ class WindowGenerator:
         input_width: int,
         label_width: int,
         shift: int,
-        training_df: pd.DataFrame,
-        validation_df: pd.DataFrame,
-        test_df: pd.DataFrame,
         X_column_l: list,
         Y_column_l: list,
         sample_weight_label_column: str,
@@ -36,16 +30,9 @@ class WindowGenerator:
             sample_weight_label_column (str): サンプルウェイトのカラム名.
         """
         # Store the raw data.
-        self.training_df = training_df
-        self.validation_df = validation_df
-        self.test_df = test_df
-
         self.X_column_l = X_column_l
         self.Y_column_l = Y_column_l
         self.sample_weight_label_column = sample_weight_label_column
-
-        # Work out the label column indices.
-        self.column_indices = {name: i for i, name in enumerate(training_df.columns)}
 
         # Work out the window parameters.
         self.input_width = input_width
@@ -73,7 +60,7 @@ class WindowGenerator:
             ]
         )
 
-    def split_window(self, features: np.ndarray) -> tuple:
+    def _split_window(self, features: np.ndarray) -> tuple:
         """全データをX，Y，sample_weightに分割する
 
         Args:
@@ -111,42 +98,24 @@ class WindowGenerator:
         sample_weights.set_shape([None, self.label_width, None])
 
         return inputs, labels, sample_weights
-        #return inputs, labels
+        # return inputs, labels
 
-    def make_dataset(self, data: np.ndarray) -> tf.data.Dataset:
-        data = np.array(data, dtype=np.float32)
+    def make_dataset(
+        self, df: pd.DataFrame, batch_size: int, shuffle: bool
+    ) -> tf.data.Dataset:
+        # Work out the label column indices.
+        self.column_indices = {name: i for i, name in enumerate(df.columns)}
+
+        data = np.array(df.values, dtype=np.float32)
         ds = tf.keras.preprocessing.timeseries_dataset_from_array(
             data=data,
             targets=None,
             sequence_length=self.total_window_size,
             sequence_stride=1,
-            shuffle=False,
-            batch_size=8,
+            shuffle=shuffle,
+            batch_size=batch_size,
         )
 
-        ds = ds.map(self.split_window)
+        ds = ds.map(self._split_window)
 
         return ds
-
-    @property
-    def training(self):
-        return self.make_dataset(self.training_df)
-
-    @property
-    def validation(self):
-        return self.make_dataset(self.validation_df)
-
-    @property
-    def test(self):
-        return self.make_dataset(self.test_df)
-
-    @property
-    def example(self):
-        """Get and cache an example batch of `inputs, labels` for plotting."""
-        result = getattr(self, "_example", None)
-        if result is None:
-            # No example batch was found, so get one from the `.train` dataset
-            result = next(iter(self.training))
-            # And cache it for next time
-            self._example = result
-        return result
