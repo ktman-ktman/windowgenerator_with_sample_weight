@@ -21,7 +21,7 @@
         "VisualStudioExptTeam.vscodeintellicode",
         "njpwerner.autodocstring"
     ],
-    "postCreateCommand": "poetry install",
+    "postCreateCommand": "/opt/poetry/bin/poetry install",
     // for gpu
     "runArgs": [
         "--gpus",
