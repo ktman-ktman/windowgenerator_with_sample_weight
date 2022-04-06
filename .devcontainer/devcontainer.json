@@ -6,22 +6,18 @@
     },
     "settings": {
         "terminal.integrated.profiles.linux": {
-            "fish (login)": {
-                "path": "fish",
+            "bash": {
+                "path": "/bin/bash",
                 "args": [
                     "-l"
                 ]
             }
         }
     },
-    "extensions": [
-        "ms-python.python",
-        "ms-python.vscode-pylance",
-        "ms-toolsai.jupyter",
-        "VisualStudioExptTeam.vscodeintellicode",
-        "njpwerner.autodocstring"
-    ],
-    "postCreateCommand": "/opt/poetry/bin/poetry install",
+    // "extensions": [
+    // "ms-python.python",
+    // ],
+    // "postCreateCommand": "git clone https://github.com/ktman-ktman/dotfiles.git ~/",
     // for gpu
     "runArgs": [
         "--gpus",
