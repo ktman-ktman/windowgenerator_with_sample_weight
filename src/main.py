@@ -8,28 +8,10 @@ import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 
 from class_ import WindowGenerator
-from functions_ import compile_and_fit, make_sample_data
+from functions_ import compile_and_fit, make_sample_data, set_seed
 from model import get_model
 
 os.environ["TF_DETERMINISTIC_OPS"] = "1"
-
-import os
-import random
-
-import numpy as np
-import tensorflow as tf
-
-
-def set_seed(seed=200):
-    tf.random.set_seed(seed)
-
-    # optional
-    # for numpy.random
-    np.random.seed(seed)
-    # for built-in random
-    random.seed(seed)
-    # for hash seed
-    os.environ["PYTHONHASHSEED"] = str(seed)
 
 
 @click.command()
