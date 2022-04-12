@@ -222,6 +222,16 @@ class WindowGenerator:
         plt.xlabel("Time [h]")
 
     def make_dataset(self, data):
+        """tf.datasetを作成．
+        targetはtimeseries_dataset_from_arrayでは設定しない．
+        split_windowで作成するため．
+
+        Args:
+            data (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         data = np.array(data, dtype=np.float32)
         ds = tf.keras.utils.timeseries_dataset_from_array(
             data=data,
