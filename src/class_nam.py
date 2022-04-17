@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -16,8 +15,8 @@ class WindowGenerator:
         train_df: pd.DataFrame,
         val_df: pd.DataFrame,
         test_df: pd.DataFrame,
-        batch_size: int = 128,
         label_columns: list,
+        batch_size: int = 128,
     ):
         # Store the raw data.
         self.train_df = train_df.copy()
@@ -41,7 +40,7 @@ class WindowGenerator:
 
         self.input_slice = slice(0, input_width)
         self.input_indices = np.arange(self.total_window_size)[self.input_slice]
-        
+
         self.label_start = self.total_window_size - self.label_width
         self.labels_slice = slice(self.label_start, None)
         self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
@@ -62,12 +61,11 @@ class WindowGenerator:
         if self.label_columns is not None:
             labels = tf.stack(
                 [
-                    labels[:, :, self.column_indices[name]]
+                    labels[:, :, self.columns_indices[name]]
                     for name in self.label_columns
                 ],
                 axis=-1,
             )
-
 
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
@@ -76,14 +74,14 @@ class WindowGenerator:
 
         return inputs, labels
 
-    def make_dataset(self, data):
+    def make_dataset(self, data, is_shuffle: bool):
         data = np.array(data, dtype=np.float32)
         ds = tf.keras.utils.timeseries_dataset_from_array(
             data=data,
             targets=None,
             sequence_length=self.total_window_size,
             sequence_stride=1,
-            shuffle=True,
+            shuffle=is_shuffle,
             batch_size=self.batch_size,
         )
 
@@ -93,15 +91,15 @@ class WindowGenerator:
 
     @property
     def train(self):
-        return self.make_dataset(self.train_df)
+        return self.make_dataset(self.train_df, is_shuffle=True)
 
     @property
     def val(self):
-        return self.make_dataset(self.val_df)
+        return self.make_dataset(self.val_df, is_shuffle=False)
 
     @property
     def test(self):
-        return self.make_dataset(self.test_df)
+        return self.make_dataset(self.test_df, is_shuffle=False)
 
     @property
     def example(self):

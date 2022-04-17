@@ -221,7 +221,7 @@ class WindowGenerator:
 
         plt.xlabel("Time [h]")
 
-    def make_dataset(self, data):
+    def make_dataset(self, data, is_shuffle: bool):
         """tf.datasetを作成．
         targetはtimeseries_dataset_from_arrayでは設定しない．
         split_windowで作成するため．
@@ -238,8 +238,8 @@ class WindowGenerator:
             targets=None,
             sequence_length=self.total_window_size,
             sequence_stride=1,
-            shuffle=True,
-            batch_size=128,
+            shuffle=is_shuffle,
+            batch_size=self.batch_size,
         )
 
         ds = ds.map(self.split_window)
@@ -248,15 +248,15 @@ class WindowGenerator:
 
     @property
     def train(self):
-        return self.make_dataset(self.train_df)
+        return self.make_dataset(self.train_df, is_shuffle=True)
 
     @property
     def val(self):
-        return self.make_dataset(self.val_df)
+        return self.make_dataset(self.val_df, is_shuffle=False)
 
     @property
     def test(self):
-        return self.make_dataset(self.test_df)
+        return self.make_dataset(self.test_df, is_shuffle=False)
 
     @property
     def example(self):
