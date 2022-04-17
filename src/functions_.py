@@ -42,7 +42,11 @@ def make_sample_data() -> pd.DataFrame:
 
 
 def compile_and_fit(
-    model: tf.keras.Model, window, max_epochs: int = 10, patience: int = 2
+    model: tf.keras.Model,
+    window,
+    max_epochs: int = 10,
+    patience: int = 2,
+    class_weight=None,
 ):
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="val_accuracy", patience=patience, mode="auto"
@@ -59,5 +63,6 @@ def compile_and_fit(
         epochs=max_epochs,
         validation_data=window.val,
         callbacks=[early_stopping],
+        class_weight=class_weight,
     )
     return history
