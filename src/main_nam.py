@@ -1,35 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import gc
 import os
 
 import click
+import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 
 from class_nam import WindowGenerator
-from functions_ import compile_and_fit, make_sample_data
+from functions_ import compile_and_fit, make_sample_data, set_seed
 from model import get_model
 
 os.environ["TF_DETERMINISTIC_OPS"] = "1"
-
-import os
-import random
-
-import numpy as np
-import tensorflow as tf
-
-
-def set_seed(seed=200):
-    tf.random.set_seed(seed)
-
-    # optional
-    # for numpy.random
-    np.random.seed(seed)
-    # for built-in random
-    random.seed(seed)
-    # for hash seed
-    os.environ["PYTHONHASHSEED"] = str(seed)
 
 
 @click.command()
@@ -47,54 +31,65 @@ def main(input_width: int, batch_size: int):
         for x in data_df[target_coln]
     ]
 
-    idx_l = data_df.index.tolist()
-    for idx_i in idx_l[-10:]:
-        index_loc = data_df.index.get_loc(idx_i)
-        train_df = data_df.iloc[:, index_loc - VAL_WIDTH - 1]
-        val_df = data_df.iloc[index_loc - VAL_WIDTH - width: index_loc - 1]
-        test_df = data_df.iloc[index_loc - width: index_loc]
+    train_df = data_df.iloc[: int(data_df.shape[0] * 0.6)].copy()
+    val_df = data_df.iloc[
+        int(data_df.shape[0] * 0.6) : int(data_df.shape[0] * 0.9)
+    ].copy()
+    test_df = data_df.iloc[int(data_df.shape[0] * 0.9) :].copy(9)
 
-        # class weight
-        classes = np.unique(train_df[target_coln])
-        class_weight = comput_class_weight(class_weight="balanced", classes=classes, y=train_df[target_coln])
+    # class weight
+    # classes = np.unique(train_df[target_coln])
+    # class_weight = comput_class_weight(
+    # class_weight="balanced", classes=classes, y=train_df[target_coln]
+    # )
 
-        # normalize
-        scaler = StandardScaler()
-        coln_l = [x for x in train_df.columns if x != target_coln]
-        train_df.loc[:, coln_l] = scaler.fit_transform(train_df[coln_l])
-        val_df.loc[:, coln_l] = scaler.transform(val_df[coln_l])
-        test_df.loc[:, coln_l] = scaler.transform(test_df[coln_l])
+    # normalize
+    scaler = StandardScaler()
+    coln_l = [x for x in train_df.columns if x != target_coln]
+    train_df.loc[:, coln_l] = scaler.fit_transform(train_df[coln_l])
+    val_df.loc[:, coln_l] = scaler.transform(val_df[coln_l])
+    test_df.loc[:, coln_l] = scaler.transform(test_df[coln_l])
 
-        window = WindowGenerator(
-            input_width=width,
-            label_width=1,
-            shift=1,
-            train_df=train_df,
-            val_df=val_df,
-            test_df=test_df,
-            batch_size=batch_size,
-            label_columns=[target_coln],
-        )
+    window = WindowGenerator(
+        input_width=input_width,
+        label_width=1,
+        shift=1,
+        train_df=train_df,
+        val_df=val_df,
+        test_df=test_df,
+        label_columns=[target_coln],
+        batch_size=batch_size,
+    )
 
-        set_seed()
-        model = get_model()
-        history, best_model = compile_and_fit(
-            model, window, max_epochs, patience, class_weight=class_weight,
-        )
-        
-        train_loss, train_acc = best_model.evaluate(window.train)
-        val_loss, val_acc = best_model.evaluate(window.val)
-        prob = best_model.predict_on_batch(test_df.values[np.newaixs, :, :])
-        print(idx_i, prob)
+    input_, label_ = next(iter(window.test))
+    print(input_)
+    print(label_)
+    raise
 
-        del model
-        del window
-        del train_df
-        del val_df
-        del test_df
-        tf.keras.backend.clear_session()
-        gc.collect()
+    # set_seed()
+    # model = get_model()
+    # history, best_model = compile_and_fit(
+    # model,
+    # window,
+    # max_epochs,
+    # patience,
+    # class_weight=class_weight,
+    # )
 
+
+#
+# train_loss, train_acc = best_model.evaluate(window.train)
+# val_loss, val_acc = best_model.evaluate(window.val)
+# prob = best_model.predict_on_batch(test_df.values[np.newaixs, :, :])
+# print(idx_i, prob)
+#
+# del model
+# del window
+# del train_df
+# del val_df
+# del test_df
+# tf.keras.backend.clear_session()
+# gc.collect()
 
 
 if __name__ == "__main__":

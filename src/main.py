@@ -56,6 +56,10 @@ def main(input_width: int, batch_size: int):
         batch_size=batch_size,
     )
 
+    input_, label_ = next(iter(generator.test))
+    print(input_)
+    print(label_)
+    raise
     input_shape = (input_width, len(X_column_l))
     set_seed()
     model = get_model(1, input_shape=input_shape)
